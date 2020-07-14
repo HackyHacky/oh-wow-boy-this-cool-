@@ -30,6 +30,13 @@
 
 ]]--
 
+if not syn then
+    warn("This script is Synapse X exclusive.")
+    return
+end
+
+game.Loaded:Wait()
+
 if SAR_EXECUTED then return end
 
 getgenv().SAR_EXECUTED = true
@@ -53,6 +60,7 @@ local backPack = player.Backpack
 
 local prefix = ";"
 local commands = {}
+local commandsInLoop = {}
 
 --<< Local Functions >--
 
@@ -67,6 +75,7 @@ end
 
 local function parseMessage(message, isToAddHistory)
     local messageCache = {}
+    local commandFound = false
 
     for v in string.gmatch(message, "[^" .. " " .. "]+") do
         table.insert(messageCache, v)
@@ -74,15 +83,27 @@ local function parseMessage(message, isToAddHistory)
 
     local commandName = messageCache[1]
 
+    table.remove(messageCache, 1)
+
     for i, v in pairs(commands) do
         if string.lower(v.Name) == string.lower(commandName) then
-            table.remove(messageCache, 1)
+            coroutine.wrap(function()
+                local success, err = pcall(function()
+                    v.Run(messageCache)
+                end)
 
-            v.Run(messageCache)
-        else
-            --! TODO: Change this to a notification.
-            warn("Command " .. commandName .. " not found.")
+                if not success then
+                    warn(err)
+                end
+
+                commandFound = true
+            end)()
         end
+    end
+
+    if not commandFound then
+        --! TODO: Change this to a notification.
+        warn("Command " .. commandName .. " not found.")
     end
 end
 
@@ -106,3 +127,11 @@ createCommand("Test", {}, 2, function(args)
         print(i, v)
     end
 end)
+
+createCommand("Rejoin", {"rj"}, 0, function(args)
+    TeleportService:Teleport(game.PlaceId)
+end)
+
+--<< Synapse Stuff >>--
+
+syn.queue_on_teleport('loadstring(game:HttpGet("https://raw.githubusercontent.com/HackyHacky/oh-wow-boy-this-cool-/master/stinky.lua"))()')
