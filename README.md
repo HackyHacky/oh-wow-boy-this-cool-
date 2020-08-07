@@ -1,3 +1,6 @@
-# oh-wow-boy-this-cool-
+## **Some Admin Remastered**
 
-cool hack u can use code as long as you follow the liscense rule k bye
+Some Admin Remasetered (SAR) is an **open sourced** admin
+script made for **Synapse X**.
+
+![Synapse X](https://x.synapse.to/)
