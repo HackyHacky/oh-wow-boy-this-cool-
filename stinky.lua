@@ -88,29 +88,6 @@ print(customChat)
 
 --<< Local Functions >--
 
-local function createCommand(commandName, commandAliases, commandArguments, commandFunction)
-    table.insert(commands, {
-        Name = commandName,
-        Aliases = commandAliases,
-        RequiredArguments = commandArguments,
-        Run = commandFunction
-    })
-end
-
-local function findAliases(commandName, commandAliases)
-    if commandAliases and type(commandAliases) == "table" then
-        for i, v in pairs(commandAliases) do
-            if type(v) == "string" then
-                if string.lower(v) == string.lower(commandName) then
-                    return true
-                end
-            end
-        end
-    end
-
-    return
-end
-
 local function makeSystemMessage(parameters, loopParameters)
     if not customChat then
         if loopParameters then
@@ -137,9 +114,73 @@ local function makeSystemMessage(parameters, loopParameters)
     end
 end
 
+local function findPlayer(playerName)
+    local players = {}
+
+    if playerName == "all" then
+        table.insert(players, Players:GetPlayers())
+    elseif playerName == "others" then
+        for i, v in pairs(Players:GetPlayers()) do
+            if v.UserId ~= player.UserId then
+                table.insert(players, v)
+            end
+        end
+    elseif playerName == "me" then
+        table.insert(players, player)
+    else
+        for i, v in pairs(Players:GetPlayers()) do
+            if string.lower(string.sub(v.Name, 1, #playerName)) == string.lower(playerName) then
+                table.insert(players, v)
+            end
+        end
+    end
+
+    return players
+end
+
+local function process_commandArguments(commandArguments, messageCache)
+    local returnArguments = {}
+
+    for i, v in pairs(commandArguments) do
+        local currentArgument = messageCache[i]
+
+        if v == "bool" or v == "boolean" then
+            currentArgument = ((currentArgument == "true" or currentArgument == "on") and true) or false
+        elseif v == "number" or v == "speed" then
+            currentArgument = tonumber(currentArgument) or 0
+        end
+
+        table.insert(returnArguments, currentArgument)
+    end
+
+    return returnArguments
+end
+
+local function findAliases(commandName, commandAliases)
+    if commandAliases and type(commandAliases) == "table" then
+        for i, v in pairs(commandAliases) do
+            print(i, v)
+            if string.lower(v) == string.lower(commandName) then
+                return true
+            end
+        end
+    end
+
+    return
+end
+
+local function findCommand(commandName)
+    for i, v in pairs(commands) do
+        if findAliases(commandName, v.Aliases) or string.lower(v.Name) == string.lower(commandName) then
+            return v
+        end
+    end
+
+    return
+end
+
 local function parseMessage(message, isToAddHistory)
     local messageCache = {}
-    local commandFound = false
     local isLoopCommand = false
     local loopAmount = 1
     local isEndCommand = false
@@ -159,10 +200,16 @@ local function parseMessage(message, isToAddHistory)
 
         if string.sub(commandName, 1, 4) == "loop" then
             commandName = string.sub(commandName, 5)
-            if tonumber(messageCache[#messageCache]) then
-                loopAmount = tonumber(messageCache[#messageCache])
+            if tonumber(messageCache[#messageCache - 1]) then
+                loopAmount = tonumber(messageCache[#messageCache - 1])
             else
                 loopAmount = 100
+            end
+
+            if tonumber(messageCache[#messageCache]) then
+                COMMAND_LOOP_DELAY = tonumber(messageCache[#messageCache])
+            else
+                COMMAND_LOOP_DELAY = 0.25
             end
 
             isLoopCommand = true
@@ -177,37 +224,52 @@ local function parseMessage(message, isToAddHistory)
 
         table.remove(messageCache, 1)
 
-        for i, v in pairs(commands) do
-            if string.lower(v.Name) == string.lower(commandName) then
-                if not v.Loopable and loopAmount > 1 then
-                    loopAmount = 1
-                end
+        local command = findCommand(commandName)
 
-                coroutine.wrap(function()
-                    for i = 1, loopAmount do
-                        local success, err = pcall(function()
-                            if not isEndCommand then
-                                v.Run(messageCache, v, {isLooping = isLoopCommand, loopIndex = i})
-                            elseif isEndCommand and type(v.End) == "function" then
-                                v.End(messageCache, v, {isLooping = isLoopCommand, loopIndex = i})
-                            end
-                        end)
+        if command then
+            local arguments = process_commandArguments(command.Args, messageCache)
 
-                        if not success then
-                            warn(err)
-                        end
-
-                        wait(COMMAND_LOOP_DELAY)
-                    end
-                end)()
-
-                commandFound = true
+            if not command.Loopable and loopAmount > 1 then
+                loopAmount = 1
             end
-        end
 
-        if not commandFound then
-            -- TODO: Change this to a notification.
-            warn("Command " .. commandName .. " not found.")
+            coroutine.wrap(function()
+                for i = 1, loopAmount do
+                    local success, errorMessage = pcall(function()
+                        if command.Args[1] == "player" and not isEndCommand then
+                            local players = findPlayer(arguments[1])
+
+                            for x, p in pairs(players) do
+                                local args = {p}
+
+                                for z, y in pairs(arguments) do
+                                    table.insert(args, y)
+                                end
+
+                                command.Run(args, command, {isLooping = isLoopCommand, loopIndex = i})
+                            end
+                        else
+                            if not isEndCommand then
+                                command.Run(arguments, command, {isLooping = isLoopCommand, loopIndex = i})
+                            elseif isEndCommand and type(command.End) == "function" then
+                                command.End(arguments, command, {isLooping = isLoopCommand, loopIndex = i})
+                            end
+                        end
+                    end)
+
+                    if not success then
+                        warn(errorMessage)
+                    end
+
+                    if COMMAND_LOOP_DELAY > 0 then
+                        wait(COMMAND_LOOP_DELAY)
+                    else
+                        RunService.Heartbeat:Wait()
+                    end
+                end
+            end)()
+        else
+            warn("Command: " .. commandName .. " does not exist.")
         end
     end
 end
@@ -266,7 +328,7 @@ end
 
 commands = {
     {
-        Name = "Walkspeed",
+        Name = "WalkSpeed",
         Aliases = {"ws"},
         Loopable = true,
         Description = "Sets your WalkSpeed to <num>",
@@ -282,7 +344,7 @@ commands = {
         end
     },
     {
-        Name = "Jumppower",
+        Name = "JumpPower",
         Aliases = {"jp"},
         Loopable = true,
         Description = "Sets your JumpPower to <num>",
@@ -295,6 +357,29 @@ commands = {
             end
 
             makeSystemMessage({Text = self.ReturnMessage .. tostring(args[1]), Font = Enum.Font.SourceSansBold, Color = Color3.fromRGB(255, 255, 255)}, loopParameters)
+        end
+    },
+    {
+        Name = "Goto",
+        Aliases = {"to"},
+        Loopable = true,
+        Description = "Teleports you to <player>",
+        ReturnMessage = "Teleported to ",
+        Args = {"player"},
+        Run = function(args, self, loopParameters)
+            local targetPlayer = args[1]
+
+            if targetPlayer then
+                if targetPlayer.Character then
+                    local rootPart = character:FindFirstChild("HumanoidRootPart")
+                    local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if rootPart and targetRoot then
+                        rootPart.CFrame = targetRoot.CFrame + Vector3.new(0, 0, 3)
+                    end
+                end
+
+                makeSystemMessage({Text = self.ReturnMessage .. targetPlayer.Name, Font = Enum.Font.SourceSansBold, Color = Color3.fromRGB(255, 255, 255)}, loopParameters)
+            end
         end
     },
     {
