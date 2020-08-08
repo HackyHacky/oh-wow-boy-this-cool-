@@ -281,44 +281,36 @@ player.CharacterAdded:Connect(function(char)
 end)
 
 if not customChat then
-    local chatHookFunction = chatBar.FocusLost:Connect(function(enterPressed)
-        print(enterPressed)
-
+    local function hookChat(enterPressed)
         if enterPressed and chatBar.Text ~= "" then
             local message = chatBar.Text
 
-            print(message)
-
-            if string.sub(message, 1, 1) == prefix or string.sub(message, 1, 4) == "/e " .. prefix then
+            if string.sub(message, 1, 1) == prefix or string.sub(message, 1, 4) == "/e " .. prefix or string.sub(message, 1, 3) == "  " .. prefix then
                 chatBar.Text = ""
             end
-
-            parseMessage(message)
+            
+            if string.sub(message, 1, 3) == "  " .. prefix then
+                parseMessage(string.sub(message, 3))
+            else
+                parseMessage(message)
+            end
         end
-    end)
+    end
+
+    local chatHookFunction = chatBar.FocusLost:Connect(hookChat)
 
     pcall(function()
         chat.Frame.ChatBarParentFrame.ChildAdded:Connect(function(instance)
+            instance:WaitForChild("BoxFrame", 10)
+
             if instance:FindFirstChild("BoxFrame") then
+                chatBar = chat.Frame.ChatBarParentFrame.Frame.BoxFrame.Frame.ChatBar
+
                 if chatHookFunction then
                     chatHookFunction:Disconnect()
                 end
 
-                chatHookFunction = chatBar.FocusLost:Connect(function(enterPressed)
-                    print(enterPressed)
-            
-                    if enterPressed then
-                        local message = chatBar.Text
-            
-                        print(message)
-            
-                        if string.sub(message, 1, 1) == prefix or string.sub(message, 1, 4) == "/e " .. prefix then
-                            chatBar.Text = ""
-                        end
-            
-                        parseMessage(message)
-                    end
-                end)
+                chatHookFunction = chatBar.FocusLost:Connect(hookChat)
             end
         end)
     end)
