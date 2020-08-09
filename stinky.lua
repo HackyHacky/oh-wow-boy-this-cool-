@@ -94,20 +94,20 @@ local function makeSystemMessage(parameters, loopParameters)
             if loopParameters.isLooping then
                 StarterGui:SetCore("ChatMakeSystemMessage", {
                     Text = parameters.Text .. " x" .. tostring(loopParameters.loopIndex),
-                    Font = parameters.Font,
+                    Font = Enum.Font.SourceSansBold,                    
                     Color = parameters.Color
                 })
             else
                 StarterGui:SetCore("ChatMakeSystemMessage", {
                     Text = parameters.Text,
-                    Font = parameters.Font,
+                    Font = Enum.Font.SourceSansBold,                    
                     Color = parameters.Color
                 })
             end
         else
             StarterGui:SetCore("ChatMakeSystemMessage", {
                 Text = parameters.Text,
-                Font = parameters.Font,
+                Font = Enum.Font.SourceSansBold,
                 Color = parameters.Color
             })
         end
@@ -148,6 +148,8 @@ local function process_commandArguments(commandArguments, messageCache)
             currentArgument = ((currentArgument == "true" or currentArgument == "on") and true) or false
         elseif v == "number" or v == "speed" then
             currentArgument = tonumber(currentArgument) or 0
+        elseif v == "string" or v == "text" then
+            currentArgument = tostring(currentArgument)
         end
 
         table.insert(returnArguments, currentArgument)
@@ -314,6 +316,10 @@ if not customChat then
             end
         end)
     end)
+
+    makeSystemMessage({Text = "Regular chat detected. Chatted commands will work.", Color = Color3.fromRGB(255, 255, 255)})
+else
+    makeSystemMessage({Text = "Custom chat detected. Chatted commands wont work.", Color = Color3.fromRGB(255, 50, 50)})
 end
 
 --<< Commands >>--
@@ -321,7 +327,7 @@ end
 commands = {
     {
         Name = "WalkSpeed",
-        Aliases = {"ws"},
+        Aliases = {"speed", "ws"},
         Loopable = true,
         Description = "Sets your WalkSpeed to <num>",
         ReturnMessage = "Changed WalkSpeed to ",
@@ -353,7 +359,7 @@ commands = {
     },
     {
         Name = "Goto",
-        Aliases = {"to"},
+        Aliases = {"tp", "to"},
         Loopable = true,
         Description = "Teleports you to <player>",
         ReturnMessage = "Teleported to ",
@@ -370,7 +376,24 @@ commands = {
                     end
                 end
 
-                makeSystemMessage({Text = self.ReturnMessage .. targetPlayer.Name, Font = Enum.Font.SourceSansBold, Color = Color3.fromRGB(255, 255, 255)}, loopParameters)
+                makeSystemMessage({Text = self.ReturnMessage .. targetPlayer.Name, Color = Color3.fromRGB(255, 255, 255)}, loopParameters)
+            end
+        end
+    },
+    {
+        Name = "GetCommandInfo",
+        Aliases = {"getcmdinfo", "cmdinfo"},
+        Loopable = false,
+        Description = "Returns the <command> information.",
+        ReturnMessage = ": ",
+        Args = {"text"},
+        Run = function(args, self)
+            local command = findCommand(args[1])
+
+            if command then
+                makeSystemMessage({Text = "Names" .. self.ReturnMessage .. command.Name .. ", " .. table.concat(command.Aliases, " "), Color = Color3.fromRGB(255, 255, 255)})
+                makeSystemMessage({Text = "Description" .. self.ReturnMessage .. command.Description, Color = Color3.fromRGB(255, 255, 255)})
+                makeSystemMessage({Text = "Arguments" .. self.ReturnMessage .. "<" .. table.concat(command.Args, "> <") .. ">", Color = Color3.fromRGB(255, 255, 255)})
             end
         end
     },
@@ -382,7 +405,7 @@ commands = {
         ReturnMessage = "Rejoining server...",
         Args = {},
         Run = function(args, self)
-            makeSystemMessage({Text = self.ReturnMessage, Font = Enum.Font.SourceSansBold, Color = Color3.fromRGB(255, 255, 255)})
+            makeSystemMessage({Text = self.ReturnMessage, Color = Color3.fromRGB(255, 255, 255)})
 
             wait(2)
 
