@@ -1,8 +1,8 @@
 # **Some Admin Remastered**
 
 Some Admin Remastered (SAR) is an **open sourced** admin developed by
-experts that have been making admins for over half a decade. SAR is designed to work
-best for **[Synapse X](https://x.synapse.to)**. Also, we strive to make SAR
+experts that have been making admins for over half a decade designed for
+**[Synapse X](https://x.synapse.to)**. Also, we strive to make SAR
 a **powerful** admin with the best **performance** and **security** possible.
 
 ## **Usage**
